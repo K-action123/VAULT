@@ -2,19 +2,19 @@ version: '3.7'
 
 services:
   vault:
-  image: hashicorp/vault:latest
-  container_name: vault
-  ports:
-    - "8200:8200"
-  volumes:
-    - ./vault/config:/vault/config:ro
-    - ./vault/data:/vault/file
-  environment:
-    VAULT_ADDR: 'https://127.0.0.1:8200'   
+    image: hashicorp/vault:latest
+    container_name: vault
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./vault/config:/vault/config:ro
+      - ./vault/data:/vault/file
+    environment:
+      VAULT_ADDR: 'https://127.0.0.1:8200'   
 
-  cap_add:
-   - IPC_LOCK
-  entrypoint: vault server -config=/vault/config/vault.hcl
+    cap_add:
+      - IPC_LOCK
+    entrypoint: vault server -config=/vault/config/vault.hcl
 
 volumes:
   vault_data: 
