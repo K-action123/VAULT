@@ -9,7 +9,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Import secrets from Vault
+      - name: Trust Self-signed vault Certificate
+        run: |
+          echo "${{ secrets.VAULT_CERT }}" > /tmp/vault.crt
+
+      - name: Import secrets from vault
         uses: hashicorp/vault-action@v2.4.0
-        with: 
-          url: 
+        with:
+          url: 'https://vaut.com:8200'
+          method: 'jwt'
+          role: 'your-github-actions-role'
+          secrets: |
+            secret/data/path/to/my-app my-db-password | DB_PASSWORD
+        env:
+        VAULT_CACERT: /tmp/vault.crt
