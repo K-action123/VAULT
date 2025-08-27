@@ -1,0 +1,45 @@
+# .github/workflows/deploy.yml
+name: Access MongoDB Credentials from Vault
+
+on:
+  push:
+    branches:
+      - master # Note: Make sure this matches the branch name in your Vault role
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  VAULT_ADDR: "https://vault-hoodk-public-vault-fcef8209.ef380317.z1.hashicorp.cloud:8200"
+  VAULT_NAMESPACE: "admin"
+
+jobs:
+  get-creds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Vault Token using GitHub OIDC
+        id: auth
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          namespace: ${{ env.VAULT_NAMESPACE }}
+          method: jwt
+          role: github-hoodk-role
+          secrets: |
+            database/creds/hoodk-role username | MONGO_USER
+            database/creds/hoodk-role password | MONGO_PASSWORD
+
+      - name: Use the MongoDB Credentials
+        run: |
+          echo "--- Dynamic Credentials Retrieved ---"
+          echo "Username: ${{ steps.auth.outputs.MONGO_USER }}"
+          echo "Password: ${{ steps.auth.outputs.MONGO_PASSWORD }}"
+
+          # NOTE: These credentials are now available as environment variables.
+          # You can use them to connect to your MongoDB database.
+          # Example:
+          # mongo --username $MONGO_USER --password $MONGO_PASSWORD --host <your-db-host>
