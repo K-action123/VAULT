@@ -4,11 +4,11 @@ name: Access MongoDB Credentials from Vault
 on:
   push:
     branches:
-      - master # Note: Make sure this matches the branch name in your Vault role
+      - master # This must match your repository's branch name
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write # Required to get the OIDC token
+  contents: read  # Required to checkout the code
 
 env:
   VAULT_ADDR: "https://vault-hoodk-public-vault-fcef8209.ef380317.z1.hashicorp.cloud:8200"
@@ -21,25 +21,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Vault Token using GitHub OIDC
+      - name: Get Vault Secrets
         id: auth
         uses: hashicorp/vault-action@v3.0.0
         with:
           url: ${{ env.VAULT_ADDR }}
           namespace: ${{ env.VAULT_NAMESPACE }}
           method: jwt
-          role: github-hoodk-role
+          role: github-hoodk-role # The Vault role we created
           secrets: |
             database/creds/hoodk-role username | MONGO_USER
             database/creds/hoodk-role password | MONGO_PASSWORD
-
+      
       - name: Use the MongoDB Credentials
         run: |
           echo "--- Dynamic Credentials Retrieved ---"
           echo "Username: ${{ steps.auth.outputs.MONGO_USER }}"
           echo "Password: ${{ steps.auth.outputs.MONGO_PASSWORD }}"
 
-          # NOTE: These credentials are now available as environment variables.
-          # You can use them to connect to your MongoDB database.
-          # Example:
-          # mongo --username $MONGO_USER --password $MONGO_PASSWORD --host <your-db-host>
+          # NOTE: These credentials are now available as environment variables for use in
+          # subsequent steps, such as connecting to your database.
+          # For example, to connect your application:
+          # your_app_command --user=$MONGO_USER --password=$MONGO_PASSWORD
