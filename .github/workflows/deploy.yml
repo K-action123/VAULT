@@ -39,20 +39,24 @@ jobs:
           echo "Username: ${{ steps.auth.outputs.MONGO_USER }}"
           echo "Password: ${{ steps.auth.outputs.MONGO_PASSWORD }}"
 
-          # NOTE: These credentials are now available as environment variables for use in
-          # subsequent steps, such as connecting to your database.
-          # For example, to connect your application:
-          # your_app_command --user=$MONGO_USER --password=$MONGO_PASSWORD
-
-      - name: Vault Debugging
+      - name: Detailed Troubleshooting on Failure
         if: ${{ failure() }}
         run: |
           echo "--- Troubleshooting Failed Step ---"
-          echo "Vault Address: ${{ env.VAULT_ADDR }}"
-          echo "Vault Namespace: ${{ env.VAULT_NAMESPACE }}"
-          echo "Role: github-hoodk-role"
-          echo "Secrets Path: database/creds/hoodk-role"
-          echo "Review the logs above for any errors from Vault. Check the following:"
-          echo "1. Vault server is unsealed and running."
-          echo "2. The 'github-hoodk-role' has the correct bound claims (repository, branch)."
-          echo "3. The Vault token used by GitHub Actions has the correct policy permissions to read the secrets."
+          echo "Attempting to get OIDC token and login manually..."
+          
+          # This command gets the raw OIDC token from GitHub
+          curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | \
+          jq "{ jwt: .value, role: \"github-hoodk-role\" }" > ./token.json
+          
+          echo '--- GitHub Actions Token Claims ---'
+          # This command decodes and prints the claims from the JWT
+          cat ./token.json | jq -r '.jwt | split(".") | .[1] | @base64d' | jq
+          
+          echo '--- Vault Login Response ---'
+          # This command manually attempts to log in to Vault and shows the full response
+          curl -sSLf -X POST -H "Content-Type: application/json" -H "X-Vault-Namespace: admin" \
+          --data @token.json $VAULT_ADDR/v1/auth/jwt/login
+          
+        env:
+          VAULT_ROLE: "github-hoodk-role"
