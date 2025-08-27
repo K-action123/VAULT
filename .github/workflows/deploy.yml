@@ -1,14 +1,13 @@
-# .github/workflows/deploy.yml
 name: Access MongoDB Credentials from Vault
 
 on:
   push:
     branches:
-      - master # This must match your repository's branch name
+      - master
 
 permissions:
-  id-token: write # Required to get the OIDC token
-  contents: read  # Required to checkout the code
+  id-token: write
+  contents: read
 
 env:
   VAULT_ADDR: "https://vault-hoodk-public-vault-fcef8209.ef380317.z1.hashicorp.cloud:8200"
@@ -21,42 +20,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get Vault Secrets
-        id: auth
-        uses: hashicorp/vault-action@v3.0.0
-        with:
-          url: ${{ env.VAULT_ADDR }}
-          namespace: ${{ env.VAULT_NAMESPACE }}
-          method: jwt
-          role: github-hoodk-role # The Vault role we created
-          secrets: |
-            database/creds/hoodk-role username | MONGO_USER
-            database/creds/hoodk-role password | MONGO_PASSWORD
+      - name: Get Vault Credentials
+        id: vault_login
+        run: |
+          # 1. Get the GitHub Actions OIDC token
+          JWT_TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r .value)
 
+          # 2. Authenticate to Vault using the OIDC token
+          VAULT_TOKEN=$(curl -sSLf -X POST -H "Content-Type: application/json" \
+          -H "X-Vault-Namespace: ${{ env.VAULT_NAMESPACE }}" \
+          -d "{\"jwt\": \"$JWT_TOKEN\", \"role\": \"github-hoodk-role\"}" \
+          "${{ env.VAULT_ADDR }}/v1/auth/jwt/login" | jq -r '.auth.client_token')
+
+          # 3. Use the Vault token to retrieve dynamic credentials from the secrets engine
+          SECRET_DATA=$(curl -sSL -H "X-Vault-Token: $VAULT_TOKEN" \
+          -H "X-Vault-Namespace: ${{ env.VAULT_NAMESPACE }}" \
+          "${{ env.VAULT_ADDR }}/v1/mongodbatlas/creds/hoodk-role" | jq -r '.data')
+
+          # 4. Extract username and password from the JSON response
+          MONGO_USER=$(echo "$SECRET_DATA" | jq -r '.username')
+          MONGO_PASSWORD=$(echo "$SECRET_DATA" | jq -r '.password')
+
+          # 5. Mask the sensitive values in the logs
+          echo "::add-mask::$MONGO_USER"
+          echo "::add-mask::$MONGO_PASSWORD"
+
+          # 6. Set the values as step outputs
+          echo "MONGO_USER=$MONGO_USER" >> "$GITHUB_OUTPUT"
+          echo "MONGO_PASSWORD=$MONGO_PASSWORD" >> "$GITHUB_OUTPUT"
+          
       - name: Use the MongoDB Credentials
         run: |
           echo "--- Dynamic Credentials Retrieved ---"
-          echo "Username: ${{ steps.auth.outputs.MONGO_USER }}"
-          echo "Password: ${{ steps.auth.outputs.MONGO_PASSWORD }}"
+          echo "Username: ${{ steps.vault_login.outputs.MONGO_USER }}"
+          echo "Password: ${{ steps.vault_login.outputs.MONGO_PASSWORD }}"
 
-      - name: Detailed Troubleshooting on Failure
-        if: ${{ failure() }}
-        run: |
-          echo "--- Troubleshooting Failed Step ---"
-          echo "Attempting to get OIDC token and login manually..."
-          
-          # This command gets the raw OIDC token from GitHub
-          curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | \
-          jq "{ jwt: .value, role: \"github-hoodk-role\" }" > ./token.json
-          
-          echo '--- GitHub Actions Token Claims ---'
-          # This command decodes and prints the claims from the JWT
-          cat ./token.json | jq -r '.jwt | split(".") | .[1] | @base64d' | jq
-          
-          echo '--- Vault Login Response ---'
-          # This command manually attempts to log in to Vault and shows the full response
-          curl -sSLf -X POST -H "Content-Type: application/json" -H "X-Vault-Namespace: admin" \
-          --data @token.json $VAULT_ADDR/v1/auth/jwt/login
-          
-        env:
-          VAULT_ROLE: "github-hoodk-role"
+          # The credentials are now available for use in subsequent steps.
