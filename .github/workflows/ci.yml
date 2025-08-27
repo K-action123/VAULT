@@ -22,4 +22,4 @@ jobs:
           secrets: |
             secret/data/path/to/my-app my-db-password | DB_PASSWORD
         env:
-        VAULT_CACERT: /tmp/vault.crt
+          VAULT_CACERT: /tmp/vault.crt

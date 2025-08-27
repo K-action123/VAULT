@@ -32,7 +32,7 @@ jobs:
           secrets: |
             database/creds/hoodk-role username | MONGO_USER
             database/creds/hoodk-role password | MONGO_PASSWORD
-      
+
       - name: Use the MongoDB Credentials
         run: |
           echo "--- Dynamic Credentials Retrieved ---"
@@ -43,3 +43,16 @@ jobs:
           # subsequent steps, such as connecting to your database.
           # For example, to connect your application:
           # your_app_command --user=$MONGO_USER --password=$MONGO_PASSWORD
+
+      - name: Vault Debugging
+        if: ${{ failure() }}
+        run: |
+          echo "--- Troubleshooting Failed Step ---"
+          echo "Vault Address: ${{ env.VAULT_ADDR }}"
+          echo "Vault Namespace: ${{ env.VAULT_NAMESPACE }}"
+          echo "Role: github-hoodk-role"
+          echo "Secrets Path: database/creds/hoodk-role"
+          echo "Review the logs above for any errors from Vault. Check the following:"
+          echo "1. Vault server is unsealed and running."
+          echo "2. The 'github-hoodk-role' has the correct bound claims (repository, branch)."
+          echo "3. The Vault token used by GitHub Actions has the correct policy permissions to read the secrets."
