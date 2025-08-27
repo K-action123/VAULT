@@ -30,8 +30,8 @@ jobs:
           method: jwt
           role: github-hoodk-role # The Vault role we created
           secrets: |
-            database/creds/hoodk-role username | MONGO_USER
-            database/creds/hoodk-role password | MONGO_PASSWORD
+                    database/creds/hoodk-role username | MONGO_USER
+                    database/creds/hoodk-role password | MONGO_PASSWORD
 
       - name: Use the MongoDB Credentials
         run: |
