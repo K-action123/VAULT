@@ -10,6 +10,12 @@ const UserSchema= new mongoose.Schema({
         type: String,
         required:[true, 'Last Name is required']
     },
+    email:{
+        type:String,
+        unique: true,
+        sparse: true, // ALLOW NULL Values, so email or telephone could be empty
+        trim: true
+    },
     telephone:{
         type:String,
         unique:true,
