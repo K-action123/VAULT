@@ -3,7 +3,8 @@ name: Access MongoDB Credentials from Vault
 on:
   push:
     branches:
-      - master
+      - develop
+      - 'feat/**'
 
 permissions:
   id-token: write
