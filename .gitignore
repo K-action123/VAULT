@@ -1,2 +1,3 @@
 # ignore vault persistent storage backend
 vault/data/
+node_modules
