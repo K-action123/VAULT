@@ -23,20 +23,43 @@ jobs:
       - name: Get Vault Credentials
         id: vault_login
         run: |
-          # 1. Get the GitHub Actions OIDC token
+          # 1. Get the GitHub Actions OIDC token (with audience for bound_audiences matching)
           JWT_TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r .value)
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/K-action123" | jq -r .value)
 
-          # 2. Authenticate to Vault using the OIDC token
-          VAULT_TOKEN=$(curl -sSLf -X POST -H "Content-Type: application/json" \
+          # Troubleshooting: Decode and print JWT claims (mask sensitive parts if needed)
+          echo "--- Decoded JWT Claims for Debugging ---"
+          DECODED_CLAIMS=$(echo "$JWT_TOKEN" | jq -R 'split(".") | .[1] | @base64d | fromjson')
+          echo "$DECODED_CLAIMS"  # This will show claims like 'ref', 'repository', 'aud', etc.
+
+          # 2. Authenticate to Vault using the OIDC token (with -v for verbose error details)
+          LOGIN_RESPONSE=$(curl -sSLfv -X POST -H "Content-Type: application/json" \
           -H "X-Vault-Namespace: ${{ env.VAULT_NAMESPACE }}" \
           -d "{\"jwt\": \"$JWT_TOKEN\", \"role\": \"github-hoodk-role\"}" \
-          "${{ env.VAULT_ADDR }}/v1/auth/jwt/login" | jq -r '.auth.client_token')
+          "${{ env.VAULT_ADDR }}/v1/auth/jwt/login")
+          
+          # Troubleshooting: Check if login failed and print full response
+          if [[ $LOGIN_RESPONSE == *"error"* ]]; then
+            echo "--- Vault Login Failed ---"
+            echo "$LOGIN_RESPONSE"
+            exit 1  # Stop the step on error for easier debugging
+          fi
+          
+          VAULT_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.auth.client_token')
 
-          # 3. Use the Vault token to retrieve dynamic credentials from the secrets engine
-          SECRET_DATA=$(curl -sSL -H "X-Vault-Token: $VAULT_TOKEN" \
+          # 3. Use the Vault token to retrieve dynamic credentials from the secrets engine (with -v)
+          SECRET_RESPONSE=$(curl -sSLv -H "X-Vault-Token: $VAULT_TOKEN" \
           -H "X-Vault-Namespace: ${{ env.VAULT_NAMESPACE }}" \
-          "${{ env.VAULT_ADDR }}/v1/mongodbatlas/creds/hoodk-role" | jq -r '.data')
+          "${{ env.VAULT_ADDR }}/v1/mongodbatlas/creds/hoodk-role")
+          
+          # Troubleshooting: Check if secret fetch failed
+          if [[ $SECRET_RESPONSE == *"error"* ]]; then
+            echo "--- Secret Fetch Failed ---"
+            echo "$SECRET_RESPONSE"
+            exit 1
+          fi
+          
+          SECRET_DATA=$(echo "$SECRET_RESPONSE" | jq -r '.data')
 
           # 4. Extract username and password from the JSON response
           MONGO_USER=$(echo "$SECRET_DATA" | jq -r '.username')
@@ -55,5 +78,3 @@ jobs:
           echo "--- Dynamic Credentials Retrieved ---"
           echo "Username: ${{ steps.vault_login.outputs.MONGO_USER }}"
           echo "Password: ${{ steps.vault_login.outputs.MONGO_PASSWORD }}"
-
-          # The credentials are now available for use in subsequent steps. hey am here i need you shit
