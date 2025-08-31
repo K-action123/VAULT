@@ -74,7 +74,7 @@ jobs:
           echo "MONGO_PASSWORD=$MONGO_PASSWORD" >> "$GITHUB_OUTPUT"
 
           # 7. Use the same Vault token to retrieve static credentials from KV secrets engine
-          STATIC_SECRET_RESPONSE=$(curl -sSl -H "X-Vault-Token: $VAULT_TOKEN" \
+          STATIC_SECRET_RESPONSE=$(curl -sSLv -H "X-Vault-Token: $VAULT_TOKEN" \
           -H "X-Vault-Namespace:${{ env.VAULT_NAMESPACE }}" \
           "${{ env.VAULT_ADDR }}/v1/kv/data/mongodb-config")
 
