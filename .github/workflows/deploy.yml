@@ -101,3 +101,5 @@ jobs:
           echo "--- Dynamic Credentials Retrieved ---"
           echo "Username: ${{ steps.vault_login.outputs.MONGO_USER }}"
           echo "Password: ${{ steps.vault_login.outputs.MONGO_PASSWORD }}"
+          echo "Host: ${{ steps.vault_login.outputs.MONGO_HOST }}"
+          echo "Database Name: ${{ steps.vault_login.outputs.MONGO_DB_NAME }}"
