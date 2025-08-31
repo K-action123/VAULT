@@ -20,7 +20,7 @@ const registerUser= asyncHandler(async(req, res)=>{
         throw new Error(" User already exists with this Email or telephone number");
     }
     // Create the new User 
-    const user = await User.findOne({
+    const user = await User.create({
         firstName,
         lastName,
         email,

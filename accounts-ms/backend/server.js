@@ -1,20 +1,35 @@
 const express = require('express');
-const dotenv = require('dotenv');
+
 const mongoose = require('mongoose');
 
 // Import The User routes
 const userRoutes  = require('./src/routes/userRoutes');
 
 // loading environment variable
-dotenv.config();
+
 const app=express();
 const PORT = process.env.PORT || 5000;
 
 // connecting to mongoDB
 const connectDB=async()=>{
     try{
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log("MONGODB connected Successfully!");
+        let mongoUri;
+        if(process.env.MONGO_URI){
+            mongoUri =  process.env.MONGO_URI;
+        }else{
+            const user= process.env.MONGO_USER;
+            const password = process.env.MONGO_PASSWORD;
+            const host = process.env.MONGO_HOST;
+            const dbName = process.env.MONGO_DB_NAME;
+
+            if(!user || !password ||!host || !dbName){
+                throw new Error('MongoDB details are missing from the environment variables.');
+            }
+            mongoUri=`mongodb+srv://${user}:${password}@${host}/${dbName}?retryWrites=true&w=majority&appName=FIRST`;
+        }
+        await mongoose.connect(mongoUri);
+        console.log("MongoDB Connected Successfully");
+        
     }catch(error){
         console.error(`Error: ${error.message}`);
         process.exit(1);
