@@ -72,6 +72,29 @@ jobs:
           # 6. Set the values as step outputs
           echo "MONGO_USER=$MONGO_USER" >> "$GITHUB_OUTPUT"
           echo "MONGO_PASSWORD=$MONGO_PASSWORD" >> "$GITHUB_OUTPUT"
+
+          # 7. Use the same Vault token to retrieve static credentials from KV secrets engine
+          STATIC_SECRET_RESPONSE=$(curl -sSl -H "X-Vault-Token: $VAULT_TOKEN" \
+          -H "X-Vault-Namespace:${{ env.VAULT_NAMESPACE }}" \
+          "${{ env.VAULT_ADDR }}/v1/kv/data/mongodb-config")
+
+          if [[ $STATIC_SECRET_RESPONSE == *"error"* ]]; then
+            echo "--- Static Secret Fetch Failed ---"
+            echo "$STATIC_SECRET_RESPONSE"
+            exit 1
+          fi
+
+          # 8. Extract the host and dbname from the JSON response
+          MONGO_HOST=$(echo "$STATIC_SECRET_RESPONSE" | jq -r '.data.data.host')
+          MONGO_DB_NAME=$(echo "$STATIC_SECRET_RESPONSE" | jq -r '.data.data.dbname')
+
+          # 9. Mask the sensitive values in the logs
+          echo "::add-mask::$MONGO_HOST"
+          echo "::add-mask::$MONGO_DB_NAME"
+
+          # 10. Set the values as step outputs
+          echo "MONGO_HOST=$MONGO_HOST" >> "$GITHUB_OUTPUT"
+          echo "MONGO_DB_NAME=$MONGO_DB_NAME" >> "$GITHUB_OUTPUT"
           
       - name: Use the MongoDB Credentials
         run: |
