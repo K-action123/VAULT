@@ -88,7 +88,7 @@ jobs:
             exit 1
           fi
 
-          # 8. Extract the host and dbname from the JSON response
+          # 8. Extract the host and dbName from the JSON response
           MONGO_HOST=$(echo "$STATIC_SECRET_RESPONSE" | jq -r '.data.data.host')
           MONGO_DB_NAME=$(echo "$STATIC_SECRET_RESPONSE" | jq -r '.data.data.dbname')
 
