@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - feat/signup-login
 
 permissions:
   id-token: write
