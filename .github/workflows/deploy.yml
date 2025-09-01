@@ -51,9 +51,6 @@ jobs:
           # 3. Use the Vault token to retrieve dynamic credentials from the secrets engine (with -v)
           SECRET_RESPONSE=$(curl -sSLv -H "X-Vault-Token: $VAULT_TOKEN" \
           -H "X-Vault-Namespace: ${{ env.VAULT_NAMESPACE }}" \
- 
-          "${{ env.VAULT_ADDR }}/v1/mongodbatlas/creds/hoodk-role")
-
           "${{ env.VAULT_ADDR }}/v1/database/creds/hoodk-role")
  
           
