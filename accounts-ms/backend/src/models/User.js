@@ -27,7 +27,9 @@ const UserSchema= new mongoose.Schema({
         required:[true,'Password is required'],
         minlength: 6,
         select: false // hides the password when querying it from DB
-    }
+    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
 },{ timestamps:true });
 
 // Hash password before saving new user
